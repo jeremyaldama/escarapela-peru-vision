@@ -20,7 +20,7 @@ interface CameraFeedProps {
   onDetection?: (result: DetectionResult) => void;
 }
 
-const BACKEND_URL = "https://usmp.losfisicos.com";
+const BACKEND_URL = "http://localhost:8000";
 
 export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -34,6 +34,11 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
   const [detectionInterval, setDetectionInterval] =
     useState<NodeJS.Timeout | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [mediaDimensions, setMediaDimensions] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   // This function now calls your backend proxy to get the token.
   const getAuthToken = async () => {
@@ -68,6 +73,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
   }, []);
 
   const startCamera = async () => {
+    setUploadedImage(null); // Clear any uploaded image
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -79,6 +85,15 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // Wait for metadata to load to get correct video dimensions
+        videoRef.current.onloadedmetadata = () => {
+          if (videoRef.current) {
+            setMediaDimensions({
+              width: videoRef.current.videoWidth,
+              height: videoRef.current.videoHeight,
+            });
+          }
+        };
         setCurrentStream(stream);
         setIsStreaming(true);
         toast.success("Cámara iniciada correctamente");
@@ -133,19 +148,22 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
 
     const apiUrl = `${BACKEND_URL}/detect`;
 
-    // The API expects a base64 string without the data URI prefix
-    const base64Data = imageBase64.split(",")[1];
+    // Convert base64 data URL to a Blob
+    const fetchRes = await fetch(imageBase64);
+    const blob = await fetchRes.blob();
+
+    // Create a FormData object to send as multipart/form-data
+    const formData = new FormData();
+    formData.append("image", blob, "detection-image.jpg");
 
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        // 'Content-Type' is not set, the browser will automatically set it
+        // to 'multipart/form-data' with the correct boundary.
         "X-Auth-Token": authToken,
       },
-      body: JSON.stringify({
-        // Your backend expects this specific format
-        image_base64: base64Data,
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
@@ -158,32 +176,29 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
 
     const data = await response.json();
     console.log("Detection API Response from backend:", data);
-    // Assuming the target class is 'escarapela' and it's the first one in the list
-    const escarapelaResult = data.detection_classes?.indexOf("escarapela");
+    // Assuming the target class is 'patriota'
+    const patriotaResultIndex = data.detection_classes?.indexOf("patriota");
 
     if (
-      escarapelaResult !== -1 &&
+      patriotaResultIndex !== -1 &&
       data.detection_boxes &&
       data.detection_scores
     ) {
-      const box = data.detection_boxes[escarapelaResult];
-      const confidence = data.detection_scores[escarapelaResult];
+      const box = data.detection_boxes[patriotaResultIndex];
+      const confidence = data.detection_scores[patriotaResultIndex];
 
-      // ModelArts returns [y_min, x_min, y_max, x_max] as relative values
+      // The new response provides absolute coordinates: [y_min, x_min, y_max, x_max]
       const [y_min, x_min, y_max, x_max] = box;
-      const video = videoRef.current;
-      const imageWidth = video?.videoWidth || 1280;
-      const imageHeight = video?.videoHeight || 720;
 
       return {
         detected: true,
         confidence: confidence,
         timestamp: new Date().toISOString(),
         boundingBox: {
-          x: x_min * imageWidth,
-          y: y_min * imageHeight,
-          width: (x_max - x_min) * imageWidth,
-          height: (y_max - y_min) * imageHeight,
+          x: x_min,
+          y: y_min,
+          width: x_max - x_min,
+          height: y_max - y_min,
         },
       };
     }
@@ -194,6 +209,58 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
       confidence: 0,
       timestamp: new Date().toISOString(),
     };
+  };
+
+  const runDetectionOnImage = async (imageBase64: string) => {
+    if (isDetecting) return;
+    setIsDetecting(true);
+    setLastDetection(null); // Clear previous results
+
+    try {
+      const result = await callDetectionAPI(imageBase64);
+      setLastDetection(result);
+      onDetection?.(result);
+
+      if (result.detected) {
+        toast.success(
+          `¡Escarapela detectada! Confianza: ${(
+            result.confidence * 100
+          ).toFixed(1)}%`
+        );
+      } else {
+        toast.info("No se detectó ninguna escarapela en la imagen.");
+      }
+    } catch (error) {
+      console.error("Detection error:", error);
+      toast.error("Error en la detección. Por favor, intente de nuevo.");
+    } finally {
+      setIsDetecting(false);
+    }
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Stop camera if it's running
+    if (isStreaming) {
+      stopCamera();
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setUploadedImage(base64String);
+
+      // Create an image object to get its dimensions
+      const img = new Image();
+      img.onload = () => {
+        setMediaDimensions({ width: img.width, height: img.height });
+        runDetectionOnImage(base64String);
+      };
+      img.src = base64String;
+    };
+    reader.readAsDataURL(file);
   };
 
   const runDetection = async () => {
@@ -241,15 +308,22 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
   };
 
   useEffect(() => {
+    // This effect handles the cleanup for the camera stream.
     return () => {
       if (currentStream) {
         currentStream.getTracks().forEach((track) => track.stop());
       }
+    };
+  }, [currentStream]);
+
+  useEffect(() => {
+    // This effect handles the cleanup for the detection interval.
+    return () => {
       if (detectionInterval) {
         clearInterval(detectionInterval);
       }
     };
-  }, [currentStream, detectionInterval]);
+  }, [detectionInterval]);
 
   return (
     <Card className="bg-card shadow-card border-0 overflow-hidden">
@@ -302,39 +376,80 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
               playsInline
               muted
               className={`w-full h-full object-cover ${
-                isStreaming ? "block" : "hidden"
+                isStreaming && !uploadedImage ? "block" : "hidden"
               }`}
             />
 
-            {!isStreaming && (
+            {uploadedImage && (
+              <img
+                src={uploadedImage}
+                alt="Uploaded for detection"
+                className="w-full h-full object-contain"
+              />
+            )}
+
+            {!isStreaming && !uploadedImage && (
               <div className="absolute inset-0 flex items-center justify-center h-full text-white/60">
                 <div className="text-center">
                   <Camera className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <p className="text-lg">Cámara no iniciada</p>
                   <p className="text-sm">
-                    Haga clic en "Iniciar Cámara" para comenzar
+                    Haga clic en "Iniciar Cámara" o "Subir Imagen"
                   </p>
                 </div>
               </div>
             )}
 
             {/* Detection overlay */}
-            {isStreaming &&
+            {(isStreaming || uploadedImage) &&
               lastDetection?.detected &&
-              lastDetection.boundingBox && (
+              lastDetection.boundingBox &&
+              mediaDimensions && (
                 <div
-                  className="absolute border-4 border-detection-active shadow-detection"
+                  className="absolute inset-0 pointer-events-none"
                   style={{
-                    left: `${(lastDetection.boundingBox.x / 1280) * 100}%`,
-                    top: `${(lastDetection.boundingBox.y / 720) * 100}%`,
-                    width: `${(lastDetection.boundingBox.width / 1280) * 100}%`,
-                    height: `${
-                      (lastDetection.boundingBox.height / 720) * 100
-                    }%`,
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
                   }}
                 >
-                  <div className="absolute -top-8 left-0 bg-detection-active text-white px-2 py-1 rounded text-sm font-medium">
-                    Escarapela {(lastDetection.confidence * 100).toFixed(1)}%
+                  <div
+                    className="relative"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: uploadedImage ? "contain" : "cover",
+                    }}
+                  >
+                    <div
+                      className="absolute border-4 border-detection-active shadow-detection"
+                      style={{
+                        left: `${
+                          (lastDetection.boundingBox.x /
+                            mediaDimensions.width) *
+                          100
+                        }%`,
+                        top: `${
+                          (lastDetection.boundingBox.y /
+                            mediaDimensions.height) *
+                          100
+                        }%`,
+                        width: `${
+                          (lastDetection.boundingBox.width /
+                            mediaDimensions.width) *
+                          100
+                        }%`,
+                        height: `${
+                          (lastDetection.boundingBox.height /
+                            mediaDimensions.height) *
+                          100
+                        }%`,
+                      }}
+                    >
+                      <div className="absolute -top-8 left-0 bg-detection-active text-white px-2 py-1 rounded text-sm font-medium pointer-events-auto">
+                        Patriota {(lastDetection.confidence * 100).toFixed(1)}%
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -342,14 +457,33 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
 
           <div className="flex items-center justify-center gap-4 mt-6">
             {!isStreaming ? (
-              <Button
-                onClick={startCamera}
-                className="bg-white text-primary hover:bg-white/90"
-                size="lg"
-              >
-                <Play className="w-5 h-5 mr-2" />
-                Iniciar Cámara
-              </Button>
+              <>
+                <Button
+                  onClick={startCamera}
+                  className="bg-white text-primary hover:bg-white/90"
+                  size="lg"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Iniciar Cámara
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                >
+                  <label>
+                    <Camera className="w-5 h-5 mr-2" />
+                    Subir Imagen
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                </Button>
+              </>
             ) : (
               <>
                 <Button
