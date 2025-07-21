@@ -20,6 +20,8 @@ interface CameraFeedProps {
   onDetection?: (result: DetectionResult) => void;
 }
 
+const BACKEND_URL = "https://usmp.losfisicos.com";
+
 export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,61 +35,31 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
     useState<NodeJS.Timeout | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
-  // --- Security Warning ---
-  // Hardcoding credentials in the frontend is a significant security risk.
-  // This should be replaced with a backend service that securely handles
-  // authentication and proxies requests to the Huawei Cloud API.
+  // This function now calls your backend proxy to get the token.
   const getAuthToken = async () => {
-    const tokenUrl = "https://iam.la-south-2.myhuaweicloud.com/v3/auth/tokens";
-    const authBody = {
-      auth: {
-        identity: {
-          methods: ["password"],
-          password: {
-            user: {
-              domain: {
-                name: "HIS_AldamaJeremy", // Name of the account
-              },
-              name: "HIS_JeremyAldama", // IAM username
-              password: "redes_123", // IAM user password
-            },
-          },
-        },
-        scope: {
-          project: {
-            name: "la-south-2", // Project name
-          },
-        },
-      },
-    };
+    const tokenUrl = `${BACKEND_URL}/auth/token`;
 
     try {
-      const response = await fetch(tokenUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(authBody),
-      });
+      const response = await fetch(tokenUrl);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Failed to get auth token:", errorText);
-        toast.error("Error de autenticación con Huawei Cloud.");
+        console.error("Failed to get auth token from backend:", errorText);
+        toast.error("Error de autenticación con el servidor.");
         return;
       }
 
-      const token = response.headers.get("X-Subject-Token");
-      if (token) {
-        setAuthToken(token);
-        toast.success("Autenticación con Huawei Cloud exitosa.");
+      const data = await response.json();
+      if (data.token) {
+        setAuthToken(data.token);
+        toast.success("Autenticación con el servidor exitosa.");
       } else {
-        console.error("X-Subject-Token not found in response headers");
+        console.error("Token not found in backend response");
         toast.error("No se pudo obtener el token de autenticación.");
       }
     } catch (error) {
-      console.error("Error fetching auth token:", error);
-      toast.error("Error de red al intentar autenticar.");
+      console.error("Error fetching auth token from backend:", error);
+      toast.error("Error de red al intentar autenticar con el servidor.");
     }
   };
 
@@ -147,6 +119,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
     return canvas.toDataURL("image/jpeg", 0.8);
   };
 
+  // This function now calls your backend proxy for detection.
   const callDetectionAPI = async (
     imageBase64: string
   ): Promise<DetectionResult> => {
@@ -158,8 +131,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
       throw new Error("Authentication token is not available.");
     }
 
-    const apiUrl =
-      "https://f395382fb31d40e48975f48f2c4b91ee.apig.la-south-2.huaweicloudapis.com/v1/infers/f26f224e-abc2-4481-8d90-b229932e88b8";
+    const apiUrl = `${BACKEND_URL}/detect`;
 
     // The API expects a base64 string without the data URI prefix
     const base64Data = imageBase64.split(",")[1];
@@ -171,19 +143,21 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
         "X-Auth-Token": authToken,
       },
       body: JSON.stringify({
-        // The request body structure for ModelArts object detection
-        images: [base64Data],
+        // Your backend expects this specific format
+        image_base64: base64Data,
       }),
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error("API Error Response:", errorBody);
-      throw new Error(`API call failed with status: ${response.status}`);
+      console.error("API Error Response from backend:", errorBody);
+      throw new Error(
+        `API call to backend failed with status: ${response.status}`
+      );
     }
 
     const data = await response.json();
-    console.log("Detection API Response:", data);
+    console.log("Detection API Response from backend:", data);
     // Assuming the target class is 'escarapela' and it's the first one in the list
     const escarapelaResult = data.detection_classes?.indexOf("escarapela");
 
