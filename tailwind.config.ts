@@ -32,6 +32,36 @@ export default {
 					DEFAULT: 'hsl(var(--secondary))',
 					foreground: 'hsl(var(--secondary-foreground))'
 				},
+				// Peru colors
+				peru: {
+					red: 'hsl(var(--peru-red))',
+					white: 'hsl(var(--peru-white))'
+				},
+				// Tech/AI colors
+				tech: {
+					blue: 'hsl(var(--tech-blue))',
+					cyan: 'hsl(var(--tech-cyan))',
+					purple: 'hsl(var(--tech-purple))'
+				},
+				// Status colors
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
+				},
+				error: {
+					DEFAULT: 'hsl(var(--error))',
+					foreground: 'hsl(var(--error-foreground))'
+				},
+				// Detection states
+				detection: {
+					active: 'hsl(var(--detection-active))',
+					inactive: 'hsl(var(--detection-inactive))',
+					processing: 'hsl(var(--detection-processing))'
+				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
 					foreground: 'hsl(var(--destructive-foreground))'
@@ -63,10 +93,25 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-tech': 'var(--gradient-tech)',
+				'gradient-peru': 'var(--gradient-peru)',
+				'gradient-hero': 'var(--gradient-hero)'
+			},
+			boxShadow: {
+				'glow': 'var(--shadow-glow)',
+				'detection': 'var(--shadow-detection)',
+				'card': 'var(--shadow-card)'
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
+			},
+			transitionTimingFunction: {
+				'smooth': 'var(--transition-smooth)',
+				'bounce': 'var(--transition-bounce)'
 			},
 			keyframes: {
 				'accordion-down': {

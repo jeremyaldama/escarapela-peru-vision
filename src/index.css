@@ -2,23 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* USMP x Huawei Cloud AI Detection Platform Design System
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 98%;
+    --foreground: 222 84% 4.9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 84% 4.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* USMP Blue */
+    --primary: 220 91% 35%;
+    --primary-foreground: 0 0% 98%;
+    
+    /* Huawei Red */
+    --secondary: 0 84% 50%;
+    --secondary-foreground: 0 0% 98%;
+    
+    /* Peru Flag Colors */
+    --peru-red: 0 100% 45%;
+    --peru-white: 0 0% 98%;
+    
+    /* AI/Tech Colors */
+    --tech-blue: 210 100% 45%;
+    --tech-cyan: 190 100% 50%;
+    --tech-purple: 260 100% 65%;
+    
+    /* Status Colors */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 98%;
+    
+    /* Detection UI */
+    --detection-active: 142 76% 36%;
+    --detection-inactive: 220 13% 69%;
+    --detection-processing: 38 92% 50%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220 91% 35%), hsl(210 100% 45%));
+    --gradient-tech: linear-gradient(135deg, hsl(210 100% 45%), hsl(190 100% 50%), hsl(260 100% 65%));
+    --gradient-peru: linear-gradient(135deg, hsl(0 100% 45%), hsl(0 0% 98%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 91% 35%) 0%, hsl(0 84% 50%) 100%);
+    
+    /* Shadows */
+    --shadow-glow: 0 0 30px hsl(210 100% 45% / 0.3);
+    --shadow-detection: 0 0 20px hsl(142 76% 36% / 0.4);
+    --shadow-card: 0 10px 30px -10px hsl(220 91% 35% / 0.1);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
