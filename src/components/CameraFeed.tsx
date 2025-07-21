@@ -20,7 +20,7 @@ interface CameraFeedProps {
   onDetection?: (result: DetectionResult) => void;
 }
 
-const BACKEND_URL = "https://usmp.losfisicos.com";
+const BACKEND_URL = "https://usmp-back.losfisicos.com";
 
 export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetection }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
