@@ -27,12 +27,42 @@ const Index = () => {
     setDetections((prev) => [...prev, result]);
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // This is just for show on the frontend. The WAF will act before the request reaches the backend.
+
+    const formData = new FormData(e.currentTarget);
+    const username = formData.get("username") as string;
+    const password = formData.get("password") as string;
+
     toast.info(
-      "Intento de inicio de sesión enviado. El WAF analizará esta solicitud."
+      "Enviando simulación de inicio de sesión... El WAF analizará la solicitud."
     );
+
+    try {
+      const response = await fetch("https://usmp.losfisicos.com", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (!response.ok) {
+        // This is the most likely path for a WAF block (e.g., status 403)
+        toast.error(
+          `Solicitud bloqueada por el WAF. Código de estado: ${response.status}`
+        );
+      } else {
+        // This path is unlikely if the endpoint doesn't exist, but good for simulation
+        toast.success("La solicitud pasó el WAF (simulación).");
+      }
+    } catch (error) {
+      // This will catch network errors, which can also happen if the WAF blocks the request
+      console.error("Login simulation error:", error);
+      toast.error(
+        "Error de red. La solicitud pudo haber sido bloqueada por el WAF."
+      );
+    }
   };
 
   return (
@@ -73,7 +103,7 @@ const Index = () => {
 
           <Card className="max-w-md mx-auto">
             <CardHeader>
-              <CardTitle>Login</CardTitle>
+              <CardTitle>Simulación de Login</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLoginSubmit} className="space-y-6">
@@ -81,6 +111,7 @@ const Index = () => {
                   <Label htmlFor="username">Usuario</Label>
                   <Input
                     id="username"
+                    name="username"
                     type="text"
                     placeholder="admin"
                     className="bg-input"
@@ -90,6 +121,7 @@ const Index = () => {
                   <Label htmlFor="password">Contraseña</Label>
                   <Input
                     id="password"
+                    name="password"
                     type="password"
                     placeholder="········"
                     className="bg-input"
