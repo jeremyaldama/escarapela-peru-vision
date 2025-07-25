@@ -2,6 +2,11 @@ import React, { useState } from "react";
 import { PartnershipHeader } from "@/components/PartnershipHeader";
 import { CameraFeed } from "@/components/CameraFeed";
 import { DetectionStats } from "@/components/DetectionStats";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface DetectionResult {
   confidence: number;
@@ -22,6 +27,14 @@ const Index = () => {
     setDetections((prev) => [...prev, result]);
   };
 
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // This is just for show on the frontend. The WAF will act before the request reaches the backend.
+    toast.info(
+      "Intento de inicio de sesión enviado. El WAF analizará esta solicitud."
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Partnership Header */}
@@ -39,6 +52,55 @@ const Index = () => {
           <div className="xl:col-span-1">
             <DetectionStats detections={detections} />
           </div>
+        </div>
+
+        {/* WAF Demonstration Section */}
+        <div className="mt-16">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-3xl font-bold mb-4">
+              Demostración de Seguridad WAF
+            </h2>
+            <p className="text-muted-foreground mb-8">
+              Este formulario simula un inicio de sesión para demostrar cómo el
+              Web Application Firewall (WAF) de Huawei Cloud protege la
+              aplicación. Intente ingresar un ataque común de inyección SQL como{" "}
+              <code className="bg-muted text-red-500 p-1 rounded text-sm">
+                ' OR '1'='1
+              </code>{" "}
+              en cualquiera de los campos para ver la protección en acción.
+            </p>
+          </div>
+
+          <Card className="max-w-md mx-auto">
+            <CardHeader>
+              <CardTitle>Login</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleLoginSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Usuario</Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="admin"
+                    className="bg-input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="········"
+                    className="bg-input"
+                  />
+                </div>
+                <Button type="submit" className="w-full">
+                  Iniciar Sesión
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Additional Information */}
